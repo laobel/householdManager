@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>分层分户拾取Demo</title>
+    <script src="https://cesiumjs.org/Cesium/Build/CesiumUnminified/Cesium.js"></script>
+    <style>
+        @import url(https://cesiumjs.org/Cesium/Build/CesiumUnminified/Widgets/widgets.css);
+
+        html,body,#cesiumContainer{
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+    </style>
+</head>
+<body>
+<div id="cesiumContainer"></div>
+</body>
+<script>
+    var viewer = new Cesium.Viewer('cesiumContainer', {
+        terrainProvider: Cesium.createWorldTerrain()
+    });
+
+    var scene = viewer.scene;
+    var camera = scene.camera;
+
+    camera.setView({
+        destination : new Cesium.Cartesian3(1216394.1392207467, -4736348.59346919, 4081293.9160685353),
+        orientation : {
+            heading : 0.018509338875732695,
+            pitch : -0.09272999615872646
+        }
+    });
+
+    var center = new Cesium.Cartesian3(1216378.7274609583, -4736321.311000817, 4081334.9085783334);
+    var modelMatrix = Cesium.Transforms.eastNorthUpToFixedFrame(center);
+    var hprRotation = Cesium.Matrix3.fromHeadingPitchRoll(new Cesium.HeadingPitchRoll(2.619728786416368, 0.0, 0.0));
+    var hpr = Cesium.Matrix4.fromRotationTranslation(hprRotation, new Cesium.Cartesian3(0.0, 0.0, -2.0));
+    Cesium.Matrix4.multiply(modelMatrix, hpr, modelMatrix);
+    var modelMatrix4=Cesium.Matrix4.multiplyByTranslation(modelMatrix, new Cesium.Cartesian3(-2.0, -1.0, 5.0), new Cesium.Matrix4());
+    var modelMatrix3=Cesium.Matrix4.multiplyByTranslation(modelMatrix, new Cesium.Cartesian3(-2.0, -1.0, -4.0), new Cesium.Matrix4());
+    var modelMatrix2=Cesium.Matrix4.multiplyByTranslation(modelMatrix, new Cesium.Cartesian3(-2.0, -1.0, -8.0), new Cesium.Matrix4());
+    var modelMatrix1=Cesium.Matrix4.multiplyByTranslation(modelMatrix, new Cesium.Cartesian3(-2.0, -1.0, -12.0), new Cesium.Matrix4());
+
+
+    var geometry4=Cesium.BoxGeometry.fromDimensions({
+        vertexFormat : Cesium.PerInstanceColorAppearance.VERTEX_FORMAT,
+        dimensions : new Cesium.Cartesian3(67.0, 36.0, 14.0)
+    });
+    var geometry3=Cesium.BoxGeometry.fromDimensions({
+        vertexFormat : Cesium.PerInstanceColorAppearance.VERTEX_FORMAT,
+        dimensions : new Cesium.Cartesian3(67.0, 36.0, 4.0)
+    });
+    var geometry2=Cesium.BoxGeometry.fromDimensions({
+        vertexFormat : Cesium.PerInstanceColorAppearance.VERTEX_FORMAT,
+        dimensions : new Cesium.Cartesian3(67.0, 36.0, 4.0)
+    });
+    var geometry1=Cesium.BoxGeometry.fromDimensions({
+        vertexFormat : Cesium.PerInstanceColorAppearance.VERTEX_FORMAT,
+        dimensions : new Cesium.Cartesian3(67.0, 36.0, 4.0)
+    });
+
+    var buildingHighlight4 = scene.primitives.add(new Cesium.ClassificationPrimitive({
+        geometryInstances : new Cesium.GeometryInstance({
+            geometry : geometry4,
+            modelMatrix : modelMatrix4,
+            attributes : {
+                color : Cesium.ColorGeometryInstanceAttribute.fromColor(Cesium.Color.fromRandom().withAlpha(0.0)),
+                show : new Cesium.ShowGeometryInstanceAttribute(true)
+            },
+            id : 'volume'
+        }),
+        classificationType : Cesium.ClassificationType.CESIUM_3D_TILE
+    }));
+    var buildingHighlight3 = scene.primitives.add(new Cesium.ClassificationPrimitive({
+        geometryInstances : new Cesium.GeometryInstance({
+            geometry : geometry3,
+            modelMatrix : modelMatrix3,
+            attributes : {
+                color : Cesium.ColorGeometryInstanceAttribute.fromColor(Cesium.Color.fromRandom().withAlpha(0.0)),
+                show : new Cesium.ShowGeometryInstanceAttribute(true)
+            },
+            id : 'volume'
+        }),
+        classificationType : Cesium.ClassificationType.CESIUM_3D_TILE
+    }));
+    var buildingHighlight2 = scene.primitives.add(new Cesium.ClassificationPrimitive({
+        geometryInstances : new Cesium.GeometryInstance({
+            geometry : geometry2,
+            modelMatrix : modelMatrix2,
+            attributes : {
+                color : Cesium.ColorGeometryInstanceAttribute.fromColor(Cesium.Color.fromRandom().withAlpha(0.0)),
+                show : new Cesium.ShowGeometryInstanceAttribute(true)
+            },
+            id : 'volume'
+        }),
+        classificationType : Cesium.ClassificationType.CESIUM_3D_TILE
+    }));
+    var buildingHighlight1 = scene.primitives.add(new Cesium.ClassificationPrimitive({
+        geometryInstances : new Cesium.GeometryInstance({
+            geometry : geometry1,
+            modelMatrix : modelMatrix1,
+            attributes : {
+                color : Cesium.ColorGeometryInstanceAttribute.fromColor(Cesium.Color.fromRandom().withAlpha(0.0)),
+                show : new Cesium.ShowGeometryInstanceAttribute(true)
+            },
+            id : 'volume'
+        }),
+        classificationType : Cesium.ClassificationType.CESIUM_3D_TILE
+    }));
+
+
+    var tileset = new Cesium.Cesium3DTileset({ url: Cesium.IonResource.fromAssetId(6074) });
+    scene.primitives.add(tileset);
+
+
+    var currentObjectId;
+    var currentPrimitive;
+    var currentColor;
+    var currentShow;
+    var attributes;
+
+    var handler = new Cesium.ScreenSpaceEventHandler(scene.canvas);
+    handler.setInputAction(function(movement) {
+        var position=scene.pickPosition(movement.endPosition);
+        //console.log(position);
+        var pickedObject = scene.pick(movement.endPosition);
+        if (Cesium.defined(pickedObject) && Cesium.defined(pickedObject.id)) {
+            console.log('aa');
+            if (pickedObject.id === currentObjectId) {
+                //return;
+            }
+
+            console.log('bb');
+
+            if (Cesium.defined(currentObjectId)) {
+                attributes = currentPrimitive.getGeometryInstanceAttributes(currentObjectId);
+                attributes.color = currentColor;
+                attributes.show = currentShow;
+                currentObjectId = undefined;
+                currentPrimitive = undefined;
+                currentColor = undefined;
+                currentShow = undefined;
+            }
+        }
+
+        if (Cesium.defined(pickedObject) && Cesium.defined(pickedObject.primitive) && Cesium.defined(pickedObject.id) && Cesium.defined(pickedObject.primitive.getGeometryInstanceAttributes)) {
+            currentObjectId = pickedObject.id;
+            currentPrimitive = pickedObject.primitive;
+            attributes = currentPrimitive.getGeometryInstanceAttributes(currentObjectId);
+            currentColor = attributes.color;
+            currentShow = attributes.show;
+            if (!scene.invertClassification) {
+                attributes.color = [255, 0, 255, 128];
+            }
+            attributes.show = [1];
+        } else if (Cesium.defined(currentObjectId)) {
+            attributes = currentPrimitive.getGeometryInstanceAttributes(currentObjectId);
+            attributes.color = currentColor;
+            attributes.show = currentShow;
+            currentObjectId = undefined;
+            currentPrimitive = undefined;
+            currentColor = undefined;
+        }
+    }, Cesium.ScreenSpaceEventType.MOUSE_MOVE);
+</script>
+</html>

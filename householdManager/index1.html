@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>分层分户拾取Demo</title>
+    <script src="https://cesiumjs.org/Cesium/Build/CesiumUnminified/Cesium.js"></script>
+    <script src="data.js"></script>
+    <script src="utils.js"></script>
+    <style>
+        @import url(https://cesiumjs.org/Cesium/Build/CesiumUnminified/Widgets/widgets.css);
+
+        html,body,#cesiumContainer{
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+        #msg{
+            position: absolute;
+            color: white;
+            background-color: black;
+            border: solid 1px rgba(115, 255, 255, 0.8);
+        }
+        .cesium-viewer-bottom {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+<div id="cesiumContainer"></div>
+<div id="msg"></div>
+</body>
+<script>
+    var msg=document.getElementById('msg');
+
+    var viewer = new Cesium.Viewer('cesiumContainer', {
+        animation: false,
+        baseLayerPicker: false,
+        fullscreenButton: false,
+        vrButton: false,
+        geocoder: false,
+        homeButton: false,
+        infoBox: false,
+        sceneModePicker: false,
+        selectionIndicator: false,
+        timeline: false,
+        navigationHelpButton: false,
+        navigationInstructionsInitiallyVisible: false,
+        orderIndependentTranslucency: false,
+        contextOptions: {
+            webgl: {
+                alpha: true,
+            }
+        }
+    });
+
+    viewer.scene.skyBox.show = false;
+    viewer.scene.backgroundColor = new Cesium.Color(0.0, 0.0, 0.0, 1.0);
+    viewer.scene.globe.baseColor= new Cesium.Color(0.0, 0.0, 0.0, 1.0);
+
+    viewer.imageryLayers.removeAll();
+
+    var scene = viewer.scene;
+    var camera = scene.camera;
+
+    camera.setView({
+        destination : new Cesium.Cartesian3(1216524.6835544186, -4736455.633313827, 4081190.0743312603),
+        orientation : {
+            heading : 5.7800851322596625,
+            pitch : -0.39735935381313503
+        }
+    });
+
+    var instance1=new Cesium.GeometryInstance({
+        geometry : new Cesium.PolygonGeometry({
+            polygonHierarchy : new Cesium.PolygonHierarchy(
+                Cesium.Cartesian3.fromDegreesArray(buildings[0].boundary)
+            ),
+            //vertexFormat : Cesium.PerInstanceColorAppearance.VERTEX_FORMAT,
+            height:0,
+            extrudedHeight:100
+        }),
+        id : buildings[0].id,
+    });
+    var instance2=new Cesium.GeometryInstance({
+        geometry : new Cesium.PolygonGeometry({
+            polygonHierarchy : new Cesium.PolygonHierarchy(
+                Cesium.Cartesian3.fromDegreesArray(buildings[1].boundary)
+            ),
+            //vertexFormat : Cesium.PerInstanceColorAppearance.VERTEX_FORMAT,
+            height:0,
+            extrudedHeight:150
+        }),
+        id : buildings[1].id,
+    });
+
+    scene.primitives.add(new Cesium.Primitive({
+        geometryInstances : [instance1,instance2],
+        asynchronous:false,
+        appearance : new Cesium.MaterialAppearance({
+            material : new Cesium.Material({
+                fabric : {
+                    type : 'Image',
+                    uniforms : {
+                        image : './img/building.png'
+                    }
+                }
+            }),
+            closed:true,
+            faceForward:true,
+            flat:true
+        })
+
+    }));
+
+    var handler = new Cesium.ScreenSpaceEventHandler(scene.canvas);
+
+    //鼠标移动事件
+    handler.setInputAction(function(movement) {
+        var pickedObject = scene.pick(movement.endPosition);
+        if(Cesium.defined(pickedObject)&& Cesium.defined(pickedObject.id)&& Cesium.defined(pickedObject.primitive)){
+            viewer.container.style.cursor='pointer';
+            var data=getDataById(pickedObject.id);
+            msg.innerHTML=data.description;
+            msg.style.top=movement.endPosition.y+'px';
+            msg.style.left=movement.endPosition.x+30+'px';
+            msg.style.display='block';
+        }else {
+            viewer.container.style.cursor='default';
+            msg.style.display='none';
+        }
+
+    }, Cesium.ScreenSpaceEventType.MOUSE_MOVE);
+
+    //鼠标单击事件
+    handler.setInputAction(function(movement) {
+        var pickedObject = scene.pick(movement.position);
+        if(Cesium.defined(pickedObject)&& Cesium.defined(pickedObject.id)&& Cesium.defined(pickedObject.primitive)){
+            viewer.container.style.cursor='pointer';
+            var data=getDataById(pickedObject.id);
+            msg.style.display='none';
+            alert(data.description);
+        }else {
+            viewer.container.style.cursor='default';
+
+        }
+
+    }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
+
+</script>
+</html>

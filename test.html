@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>分层分户拾取Demo</title>
+    <script src="https://cesiumjs.org/Cesium/Build/CesiumUnminified/Cesium.js"></script>
+    <style>
+        @import url(https://cesiumjs.org/Cesium/Build/CesiumUnminified/Widgets/widgets.css);
+
+        html,body,#cesiumContainer{
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+    </style>
+</head>
+<body>
+<div id="cesiumContainer"></div>
+</body>
+<script>
+    var viewer = new Cesium.Viewer('cesiumContainer', {
+        terrainProvider: Cesium.createWorldTerrain()
+    });
+
+    var scene = viewer.scene;
+    var camera = scene.camera;
+
+    camera.setView({
+        destination : new Cesium.Cartesian3(1216394.1392207467, -4736348.59346919, 4081293.9160685353),
+        orientation : {
+            heading : 0.018509338875732695,
+            pitch : -0.09272999615872646
+        }
+    });
+
+
+    var tileset = new Cesium.Cesium3DTileset({ url: Cesium.IonResource.fromAssetId(6074) });
+    scene.primitives.add(tileset);
+
+
+    var currentObjectId;
+    var currentPrimitive;
+    var currentColor;
+    var currentShow;
+    var attributes;
+
+    var handler = new Cesium.ScreenSpaceEventHandler(scene.canvas);
+    handler.setInputAction(function(movement) {
+        var mousePosition=movement.position;
+
+        var pickedObject = scene.pick(mousePosition);
+        var position;
+        if (Cesium.defined(pickedObject) && (pickedObject instanceof Cesium.Cesium3DTileFeature || pickedObject.primitive instanceof Cesium.Cesium3DTileset)) {
+            scene.render();
+            position = scene.pickPosition(mousePosition);
+        } else {
+            var ray = scene.camera.getPickRay(mousePosition);
+            position = scene.globe.pick(ray, scene);
+        }
+        var cartographic=Cesium.Cartographic.fromCartesian(position);
+
+        var lat=Cesium.Math.toDegrees(cartographic.latitude);
+
+        var lng=Cesium.Math.toDegrees(cartographic.longitude);
+
+        var alt=cartographic.height;
+
+
+        console.log(lng,lat,alt);
+    }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
+</script>
+</html>

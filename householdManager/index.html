@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>分层分户拾取Demo</title>
+    <script src="https://cesiumjs.org/Cesium/Build/CesiumUnminified/Cesium.js"></script>
+    <script src="data.js"></script>
+    <script src="utils.js"></script>
+    <style>
+        @import url(https://cesiumjs.org/Cesium/Build/CesiumUnminified/Widgets/widgets.css);
+
+        html,body,#cesiumContainer{
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+        #trailer {
+            position: absolute;
+            bottom: 75px;
+            right: 0;
+            width: 320px;
+            height: 180px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+<div id="cesiumContainer"></div>
+<div style="position: absolute;right: 10px;top: 20px;width:200px; padding: 20px; background-color: rgba(50,50,50,0.8);color:white;z-index: 999999;">
+    <div style="width: 100%;">
+        <label><input name="拾取模式" type="radio" value="0" onchange="radioChange(this)" checked="true" />楼栋 </label></br>
+        <label><input name="拾取模式" type="radio" value="1" onchange="radioChange(this)" />楼层 </label>
+    </div>
+    <hr>
+    <div style="width: 100%;" id="msg">
+
+    </div>
+</div>
+<video id="trailer" muted="" autoplay="" loop="" crossorigin="" controls="">
+    <source src="https://cesiumjs.org/videos/Sandcastle/big-buck-bunny_trailer.webm" type="video/webm">
+    <source src="https://cesiumjs.org/videos/Sandcastle/big-buck-bunny_trailer.mp4" type="video/mp4">
+    <source src="https://cesiumjs.org/videos/Sandcastle/big-buck-bunny_trailer.mov" type="video/quicktime">
+    Your browser does not support the <code>video</code> element.
+</video>
+</body>
+<script>
+    var msg=document.getElementById('msg');
+
+    var viewer = new Cesium.Viewer('cesiumContainer', {
+        baseLayerPicker : false,
+        geocoder:false,
+        homeButton:false,
+        navigationHelpButton:false,
+        sceneModePicker: false,
+        timeline:false
+    });
+    viewer.imageryLayers.removeAll();
+
+    var scene = viewer.scene;
+    var camera = scene.camera;
+
+    camera.setView({
+        destination : new Cesium.Cartesian3(1216394.1392207467, -4736348.59346919, 4081293.9160685353),
+        orientation : {
+            heading : 0.018509338875732695,
+            pitch : -0.09272999615872646
+        }
+    });
+
+    //添加倾斜模型
+    var tileset = new Cesium.Cesium3DTileset({ url: Cesium.IonResource.fromAssetId(6074) });
+    scene.primitives.add(tileset);
+
+    //创建建筑物
+    var buildingPrimitives=new Cesium.PrimitiveCollection({
+        show:true
+    });
+    scene.primitives.add(buildingPrimitives);
+    function createBuilding(data) {
+        var instance=new Cesium.GeometryInstance({
+            geometry : new Cesium.PolygonGeometry({
+                polygonHierarchy : new Cesium.PolygonHierarchy(
+                    Cesium.Cartesian3.fromDegreesArray(data.boundary)
+                )
+            }),
+            id : data.id,
+            attributes : {
+                color : new Cesium.ColorGeometryInstanceAttribute(1.0, 0.0, 1.0, 0.0)
+            }
+        });
+        var buildingPrimitive=new Cesium.GroundPrimitive({
+            geometryInstances : instance,
+            asynchronous:true,
+            classificationType : Cesium.ClassificationType.CESIUM_3D_TILE
+        });
+
+        buildingPrimitives.add(buildingPrimitive);
+    }
+    //创建楼层
+    var floorPrimitives=new Cesium.PrimitiveCollection({
+        show:false
+    });
+    scene.primitives.add(floorPrimitives);
+    function createFloor(data) {
+        var instance=new Cesium.GeometryInstance({
+            geometry : new Cesium.PolygonGeometry({
+                polygonHierarchy : new Cesium.PolygonHierarchy(
+                    Cesium.Cartesian3.fromDegreesArray(data.boundary)
+                ),
+                height:data.altitude,
+                extrudedHeight:data.altitude+data.height
+            }),
+            id : data.id,
+            attributes : {
+                color : new Cesium.ColorGeometryInstanceAttribute(1.0, 0.0, 1.0, 0.0)
+            }
+        });
+        var floorPrimitive=new Cesium.ClassificationPrimitive({
+            geometryInstances : instance,
+            asynchronous:false,
+            classificationType : Cesium.ClassificationType.CESIUM_3D_TILE
+        });
+
+        floorPrimitives.add(floorPrimitive);
+    }
+
+    //创建房屋
+    var housePrimitive;
+    var labels = scene.primitives.add(new Cesium.LabelCollection());
+    function createHouses(floorData) {
+        var houseInstances=[];
+
+        var bboxInstance=new Cesium.GeometryInstance({
+            geometry : new Cesium.PolygonGeometry({
+                polygonHierarchy : new Cesium.PolygonHierarchy(
+                    Cesium.Cartesian3.fromDegreesArray(floor.boundary)
+                ),
+                vertexFormat : Cesium.PerInstanceColorAppearance.VERTEX_FORMAT,
+                height:floorData.altitude,
+            }),
+            id : floor.id+'_bbox',
+            attributes : {
+                color : Cesium.ColorGeometryInstanceAttribute.fromColor(Cesium.Color.fromRandom({
+                    /*maximumRed : 0.75,*/
+                    alpha : 1
+                })),
+                show : new Cesium.ShowGeometryInstanceAttribute(true)
+            }
+        });
+
+        houseInstances.push(bboxInstance);
+
+        for(var k=0;k<floorData.houses.length;k++){
+            var house=floorData.houses[k];
+            var instance=new Cesium.GeometryInstance({
+                geometry : new Cesium.PolygonGeometry({
+                    polygonHierarchy : new Cesium.PolygonHierarchy(
+                        Cesium.Cartesian3.fromDegreesArray(house.boundary)
+                    ),
+                    vertexFormat : Cesium.PerInstanceColorAppearance.VERTEX_FORMAT,
+                    height:house.altitude,
+                    extrudedHeight:house.altitude+house.height
+                }),
+                id : house.id,
+                attributes : {
+                    color :  Cesium.ColorGeometryInstanceAttribute.fromColor(Cesium.Color.fromRandom({
+                        /*maximumRed : 0.75,*/
+                        alpha : 1
+                    })),
+                    show : new Cesium.ShowGeometryInstanceAttribute(true)
+                }
+            });
+
+            houseInstances.push(instance);
+
+            var position=getCenterOfGravityPoint(house.boundary);
+            labels.add({
+                position : Cesium.Cartesian3.fromDegrees(position[0],position[1],house.altitude+house.height+0.1),
+                text :house.name,
+                font:'14px sans-serif',
+                showBackground:true,
+                verticalOrigin : Cesium.VerticalOrigin.BOTTOM
+            });
+        }
+
+        housePrimitive=scene.primitives.add(new Cesium.Primitive({
+            geometryInstances : houseInstances,
+            asynchronous:false,
+            appearance : new Cesium.PerInstanceColorAppearance({
+                translucent:false,
+                closed:true,
+                renderState : {
+                    lineWidth : Math.min(2.0, scene.maximumAliasedLineWidth)
+                }
+            })
+        }));
+        var houseModelMatrix=housePrimitive.modelMatrix;
+        Cesium.Matrix4.multiplyByTranslation(houseModelMatrix, new Cesium.Cartesian3(70.0, 20.0, 15.0), houseModelMatrix);
+        housePrimitive.modelMatrix = houseModelMatrix;
+
+        var labelsModelMatrix=labels.modelMatrix;
+        Cesium.Matrix4.multiplyByTranslation(labelsModelMatrix, new Cesium.Cartesian3(70.0, 20.0, 15.0), labelsModelMatrix);
+        labels.modelMatrix = labelsModelMatrix;
+    }
+
+
+    //添加摄像头
+    var billboards = scene.primitives.add(new Cesium.BillboardCollection());
+    billboards.add({
+        id:'test-camera',
+        position : new Cesium.Cartesian3.fromDegrees(-75.59645103986857,40.038544658789924,87.7),
+        image : './img/camera.png',
+        scale : 0.15,
+    });
+
+
+    //添加楼栋楼层数据
+    for(var i=0;i<buildings.length;i++){
+        var building=buildings[i];
+        createBuilding(building);
+        for(var j=0;j<building.floors.length;j++){
+            var floor=building.floors[j];
+            createFloor(floor);
+            /*for(var k=0;k<floor.houses.length;k++){
+                var house=floor.houses[k];
+                createHouse(house);
+            }*/
+        }
+    }
+
+
+    /**
+     * 单选按钮切换事件
+     * @param element
+     */
+    function radioChange(element) {
+        if(element.value==="0"){
+            buildingPrimitives.show=true;
+            floorPrimitives.show=false;
+        }else {
+            buildingPrimitives.show=false;
+            floorPrimitives.show=true;
+        }
+    }
+
+    /**
+     * 设置描述信息
+     * @param dataId
+     */
+    function setDescription(dataId) {
+        var data=getDataById(dataId);
+        if(Cesium.defined(data)){
+            msg.innerHTML=data.description
+        }else {
+            msg.innerHTML='';
+        }
+    }
+
+    var currentObjId=undefined;
+    var currentAttributes=undefined;
+    var currentHouseId=undefined;
+    var currentHouseAttributes=undefined;
+    var currentColor = undefined;
+    var selectObjId=undefined;
+    var selectAttributes=undefined;
+    var handler = new Cesium.ScreenSpaceEventHandler(scene.canvas);
+
+    //鼠标移动事件
+    handler.setInputAction(function(movement) {
+        var pickedObject = scene.pick(movement.endPosition);
+        if(Cesium.defined(pickedObject)&& Cesium.defined(pickedObject.id)&& Cesium.defined(pickedObject.primitive)){
+            viewer.container.style.cursor='pointer';
+        }else {
+            viewer.container.style.cursor='default';
+        }
+
+        if(Cesium.defined(pickedObject)&&Cesium.defined(pickedObject.id)&&pickedObject.id==="test-camera"){
+            msg.innerHTML='测试摄像头';
+            if(Cesium.defined(currentHouseAttributes)){
+                currentHouseAttributes.color=currentColor;
+            }
+            currentHouseId = undefined;
+            currentHouseAttributes=undefined;
+
+            return;
+        }
+
+
+        if(Cesium.defined(selectObjId)){
+            if(Cesium.defined(currentHouseAttributes)){
+                currentHouseAttributes.color=currentColor;
+            }
+            currentHouseId = undefined;
+            currentHouseAttributes=undefined;
+            setDescription(currentHouseId);
+
+            if(!Cesium.defined(pickedObject)||Cesium.defined(housePrimitive)&&housePrimitive._instanceIds.indexOf(pickedObject.id)<0){
+                return;
+            }
+            if (Cesium.defined(pickedObject) && Cesium.defined(pickedObject.id)&& Cesium.defined(pickedObject.primitive)) {
+                if(Cesium.defined(currentHouseId)){
+                    if (pickedObject.id !== currentHouseId) {
+                        currentHouseAttributes.color=currentColor;
+                        currentHouseId=pickedObject.id;
+                        currentHouseAttributes=pickedObject.primitive.getGeometryInstanceAttributes(currentHouseId);
+                        currentColor=currentHouseAttributes.color;
+                        currentHouseAttributes.color=[255, 0, 255, 128];
+                    }
+                }else {
+                    currentHouseId=pickedObject.id;
+                    currentHouseAttributes=pickedObject.primitive.getGeometryInstanceAttributes(currentHouseId);
+                    currentColor=currentHouseAttributes.color;
+                    currentHouseAttributes.color=[255, 0, 255, 128];
+                }
+            }else {
+                if(Cesium.defined(currentHouseAttributes)){
+                    currentHouseAttributes.color=currentColor;
+                }
+                currentHouseId = undefined;
+                currentHouseAttributes=undefined;
+            }
+            setDescription(currentHouseId);
+        }else {
+            if (Cesium.defined(pickedObject) && Cesium.defined(pickedObject.id)&& Cesium.defined(pickedObject.primitive)) {
+                if(Cesium.defined(currentObjId)){
+                    if (pickedObject.id !== currentObjId) {
+                        currentAttributes.color=[255, 0, 255, 0];
+                        currentObjId=pickedObject.id;
+                        currentAttributes=pickedObject.primitive.getGeometryInstanceAttributes(currentObjId);
+                        currentAttributes.color=[255, 0, 255, 128];
+                    }
+                }else {
+                    currentObjId=pickedObject.id;
+                    currentAttributes=pickedObject.primitive.getGeometryInstanceAttributes(currentObjId);
+                    currentAttributes.color=[255, 0, 255, 128];
+                }
+            }else {
+                if(Cesium.defined(currentAttributes)){
+                    currentAttributes.color=[255, 0, 255, 0];
+                }
+                currentObjId = undefined;
+                currentAttributes=undefined;
+            }
+            setDescription(currentObjId);
+        }
+    }, Cesium.ScreenSpaceEventType.MOUSE_MOVE);
+
+    //鼠标单击事件
+    handler.setInputAction(function(movement) {
+        scene.primitives.remove(housePrimitive);
+        labels=scene.primitives.remove(labels)&&scene.primitives.add(new Cesium.LabelCollection());
+        var pickedObject = scene.pick(movement.position);
+        if (Cesium.defined(pickedObject) && Cesium.defined(pickedObject.id)&& Cesium.defined(pickedObject.primitive)) {
+            if(pickedObject.id==="test-camera"){
+                msg.innerHTML='测试摄像头';
+                if(Cesium.defined(selectAttributes)){
+                    selectAttributes.color=[255, 0, 255, 0];
+                }
+                selectObjId = undefined;
+                selectAttributes=undefined;
+
+                var video=document.getElementById('trailer');
+                if(video.style.display==='block'){
+                    video.style.display='none'
+                }else {
+                    video.style.display='block'
+                }
+                return;
+            }
+
+
+            if(Cesium.defined(selectObjId)){
+                if (pickedObject.id !== selectObjId) {
+                    selectAttributes.color=[255, 0, 255, 0];
+                    selectObjId=pickedObject.id;
+                    selectAttributes=pickedObject.primitive.getGeometryInstanceAttributes(selectObjId);
+                    selectAttributes.color=[255, 0, 255, 128];
+
+                    var floorData=getFloorDataById(selectObjId);
+                    if(Cesium.defined(floorData)){
+                        createHouses(floorData);
+                    }
+                }
+            }else {
+                selectObjId=pickedObject.id;
+                selectAttributes=pickedObject.primitive.getGeometryInstanceAttributes(selectObjId);
+                selectAttributes.color=[255, 0, 255, 128];
+
+                var floorData=getFloorDataById(selectObjId);
+                if(Cesium.defined(floorData)){
+                    createHouses(floorData);
+                }
+            }
+        }else {
+            if(Cesium.defined(selectAttributes)){
+                selectAttributes.color=[255, 0, 255, 0];
+            }
+            selectObjId = undefined;
+            selectAttributes=undefined;
+        }
+        setDescription(selectObjId);
+
+    }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
+
+
+
+</script>
+</html>

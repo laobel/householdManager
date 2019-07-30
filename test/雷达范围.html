@@ -1,0 +1,160 @@
+<!-- 2019-1-17 10:19:31 | 版权所有 火星科技 http://marsgis.cn  【联系我们QQ：516584683，微信：marsgis】 -->
+<!DOCTYPE html>
+<html>
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=0,minimum-scale=1,maximum-scale=1">
+    <meta name="author" content="火星科技 http://cesium.marsgis.cn ">
+    <meta name="apple-touch-fullscreen" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="format-detection" content="telephone=no">
+    <meta name="x5-fullscreen" content="true">
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge,chrome=1">
+    <meta name="keywords" content="火星科技,cesium,3D,GIS,marsgis,三维,地球,地图,开发,框架,系统,示例,资料,模型,离线,外包,合肥,安徽,中国">
+    <meta name="description"
+          content="火星科技 合肥火星 合肥火星科技 合肥火星科技有限公司 leaflet leaflet框架 leaflet开发 cesium cesium开发 cesium框架 三维 地球 模型  gis marsgis 地图离线 地图开发 地图框架 地图外包 框架 开发 外包  地图离线 二维地图 三维地图 全景漫游 地理信息系统 云GIS 三维GIS GIS平台 WebGIS">
+    <link rel="shortcut icon" type="image/x-icon" href="../docs/img/favicon/favicon.ico">
+    <title>相控阵雷达范围 |MarsGIS for Cesium|三维地图| 火星科技|合肥火星科技|合肥火星科技有限公司</title>
+    <script src="../lib/include-lib.js" libpath="../lib/"
+            include="jquery,jquery.range,font-awesome,bootstrap,bootstrap-checkbox,layer,haoutil,turf,cesium-mars"></script>
+    <link href="css/style.css" rel="stylesheet">
+</head>
+<body>
+<div id="mask" class="signmask" onclick="removeMask()"></div>
+<div id="cesiumContainer" class="cesium-container"></div>
+<div class="infoview">
+    <table class="yybz_atable">
+        <tr>
+            <td class="nametd">半径（米）</td>
+            <td><input id="model_radius" type="number" class="form-control" min="1" max="999999999" step="1.0"
+                       value="100000" title="半径"></td>
+        </tr>
+        <tr>
+            <td class="nametd">方向（heading）</td>
+            <td><input id="model_heading" type="range" min="0" max="360" step="1.0" value="90" title="方向"></td>
+        </tr>
+        <tr>
+            <td class="nametd">仰角（pitch）</td>
+            <td><input id="model_pitch" type="range" min="0" max="360" step="1.0" value="0" title="倾角pitch"></td>
+        </tr>
+        <tr>
+            <td class="nametd">左右（roll）</td>
+            <td><input id="model_roll" type="range" min="0" max="360" step="1.0" value="0" title="滚动角roll"></td>
+        </tr>
+        <tr>
+            <td class="nametd">上下夹角(X轴)</td>
+            <td><input id="model_angle1" type="range" min="0" max="89" step="1.0" value="50"></td>
+        </tr>
+        <tr>
+            <td class="nametd">左右夹角(Y轴)</td>
+            <td><input id="model_angle2" type="range" min="0" max="89" step="1.0" value="50"></td>
+        </tr>
+        <tr>
+            <td class="nametd">扫描面</td>
+            <td>
+                <div class="checkbox checkbox-primary checkbox-inline"><input id="chkShowScanPlane" class="styled"
+                                                                              type="checkbox" checked> <label
+                        for="chkShowScanPlane">是否显示</label></div>
+            </td>
+        </tr>
+    </table>
+</div>
+<script src="../lib/CesiumPlugins/space/sensor.js"></script>
+<script>function removeMask() {
+    $("#mask").remove()
+}
+
+var viewer, sensorEntity;
+
+function initMap() {
+    var e = haoutil.system.getRequestByName("config", "config/config.json");
+    mars3d.createMap({
+        id: "cesiumContainer", url: e, sceneModePicker: !1, success: function (e, n, a) {
+            viewer = e, setTimeout(removeMask, 3e3), initWork()
+        }
+    })
+}
+
+function initWork() {
+    viewer.mars.centerAt({
+        y: 35.04887,
+        x: 121.671174,
+        z: 351719.6,
+        heading: 241.9,
+        pitch: -31.9,
+        roll: 359.8
+    }), viewer.entities.add({
+        position: Cesium.Cartesian3.fromDegrees(117.224, 31.819, 31),
+        model: {uri: "../data/gltf/mulou.gltf", scale: 2}
+    }), $("#model_heading").range({
+        onChange: function (e, n) {
+            updateModel()
+        }
+    }), $("#model_pitch").range({
+        onChange: function (e, n) {
+            updateModel()
+        }
+    }), $("#model_roll").range({
+        onChange: function (e, n) {
+            updateModel()
+        }
+    }), $("#model_radius").change(function () {
+        sensorEntity.rectangularSensor.radius = Number($(this).val())
+    }), $("#model_angle1").range({
+        onChange: function (e, n) {
+            showEntity()
+        }
+    }), $("#model_angle2").range({
+        onChange: function (e, n) {
+            showEntity()
+        }
+    }), $("#chkShowScanPlane").change(function () {
+        showEntity()
+    }), showEntity()
+}
+
+function showEntity() {
+    sensorEntity && (viewer.entities.remove(sensorEntity), sensorEntity = null);
+    var e = Number($("#model_radius").val()), n = Number($("#model_angle1").val()),
+        a = Number($("#model_angle2").val()), i = $("#chkShowScanPlane").is(":checked"),
+        o = Number($("#model_heading").val()), t = Number($("#model_pitch").val()), s = Number($("#model_roll").val()),
+        r = new Cesium.HeadingPitchRoll(Cesium.Math.toRadians(o), Cesium.Math.toRadians(t), Cesium.Math.toRadians(s)),
+        l = Cesium.Cartesian3.fromDegrees(117.224, 31.819, 128);
+    sensorEntity = viewer.entities.add({
+        position: l,
+        orientation: Cesium.Transforms.headingPitchRollQuaternion(l, r),
+        rectangularSensor: new Cesium.RectangularSensorGraphics({
+            radius: e,
+            xHalfAngle: Cesium.Math.toRadians(n),
+            yHalfAngle: Cesium.Math.toRadians(a),
+            material: new Cesium.Color(0, 1, 1, .4),
+            lineColor: new Cesium.Color(0, 1, 1, 1),
+            showScanPlane: i,
+            scanPlaneColor: new Cesium.Color(0, 1, 1, 1),
+            scanPlaneMode: "vertical",
+            scanPlaneRate: 3,
+            showThroughEllipsoid: !1
+        })
+    })
+}
+
+function updateModel() {
+    var e = Number($("#model_heading").val()), n = Number($("#model_pitch").val()), a = Number($("#model_roll").val()),
+        i = new Cesium.HeadingPitchRoll(Cesium.Math.toRadians(e), Cesium.Math.toRadians(n), Cesium.Math.toRadians(a));
+    sensorEntity.orientation = Cesium.Transforms.headingPitchRollQuaternion(sensorEntity.position._value, i)
+}
+
+$(document).ready(function () {
+    mars3d.util.webglreport() || (alert("系统检测到您使用的浏览器不支持WebGL功能"), layer.open({
+        type: 1,
+        title: "当前浏览器不支持WebGL功能",
+        closeBtn: 0,
+        shadeClose: !1,
+        resize: !1,
+        area: ["600px", "200px"],
+        content: '<div style="margin: 20px;"><h3>系统检测到您使用的浏览器不支持WebGL功能！</h3>  <p>1、请您检查浏览器版本，安装使用最新版chrome、火狐或IE11以上浏览器！</p> <p>2、WebGL支持取决于GPU支持，请保证客户端电脑已安装显卡驱动程序！</p></div>'
+    })), initMap()
+})</script>
+</body>
+</html>

@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <script src="https://cesiumjs.org/Cesium/Build/CesiumUnminified/Cesium.js"></script>
+    <script src="../data.js"></script>
+    <style>
+        @import url(https://cesiumjs.org/Cesium/Build/CesiumUnminified/Widgets/widgets.css);
+
+        html, body, #cesiumContainer {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+    </style>
+</head>
+<body>
+<div id="cesiumContainer"></div>
+<div style="position: absolute;top: 0;left: 0;">
+    <button id="color">纯色材质</button>
+    <button id="tupian">纯色材质</button>
+    <button id="qipan">纯色材质</button>
+    <button id="wangge">纯色材质</button>
+</div>
+</body>
+<script>
+    //定义一个观察者对象
+    var viewer = new Cesium.Viewer('cesiumContainer');
+    //定义一个box实体
+    var entity_box = new Cesium.Entity({
+        id: 'box1',
+        name: 'BLUE  box with black outline',
+        position: Cesium.Cartesian3.fromDegrees(116.423241, 39.920026, 600000.0),
+        box: {
+            dimensions: new Cesium.Cartesian3(900000.0, 300000.0, 500000.0),
+            outline: false,
+            outlineColor: Cesium.Color.RED
+        }
+    });
+
+    var scene = viewer.scene;
+    var camera = scene.camera;
+    scene.globe.depthTestAgainstTerrain=true;
+
+    /*camera.setView({
+        destination : new Cesium.Cartesian3(1216394.1392207467, -4736348.59346919, 4081293.9160685353),
+        orientation : {
+            heading : 0.018509338875732695,
+            pitch : -0.09272999615872646
+        }
+    });*/
+
+    viewer.entities.add(entity_box);
+    viewer.zoomTo(viewer.entities);
+    //纯色材质
+    document.getElementById('color').onclick = function () {
+        entity_box.box.material = Cesium.Color.BLUE.withAlpha(0.5);
+    }
+    //图片材质
+    document.getElementById('tupian').onclick = function () {
+        entity_box.box.material = new Cesium.ImageMaterialProperty({
+            image: './building.png',     //可以为url、canvas、video
+            transparent:true
+        });
+        var entity = new Cesium.Entity({
+            position: Cesium.Cartesian3.fromDegrees(116.423241, 39.920026, 1100000.0),
+            box: {
+                dimensions: new Cesium.Cartesian3(900000.0, 300000.0, 500000.0),
+                outline: false,
+                outlineColor: Cesium.Color.RED
+            }
+        });
+        entity.box.material = new Cesium.ImageMaterialProperty({
+            image: './building.png',     //可以为url、canvas、video
+            transparent:true
+        });
+        viewer.entities.add(entity);
+
+        entity=viewer.entities.add({
+            name: "光罩",
+            position: Cesium.Cartesian3.fromDegrees(116.423241, 39.920026, 0.0),
+            show: true,
+            ellipsoid: {
+                radii: new Cesium.Cartesian3(4000, 4000, 4000),
+                material: Cesium.Color.YELLOW.withAlpha(.2),
+                outline: true,
+                outlineColor: Cesium.Color.WHITE
+            }
+        });
+        viewer.zoomTo(entity);
+    }
+    //棋盘材质
+    document.getElementById('qipan').onclick = function () {
+        entity_box.box.material = new Cesium.CheckerboardMaterialProperty({
+            evenColor: Cesium.Color.WHITE,
+            oddColor: Cesium.Color.BLACK,
+            repeat: new Cesium.Cartesian2(4, 4),
+            offset: 20,
+            orientation: Cesium.StripeOrientation.VERTICAL
+        });
+    }
+    //网格材质
+    document.getElementById('wangge').onclick = function () {
+        entity_box.box.material = new Cesium.GridMaterialProperty({
+            color: Cesium.Color.YELLOW,
+            cellAlpha: 0.2,
+            lineCount: new Cesium.Cartesian2(8, 8),
+            lineThickness: new Cesium.Cartesian2(2.0, 2.0)
+        });
+    }
+    viewer._cesiumWidget._creditContainer.style.display = "none";
+</script>
+</html>
